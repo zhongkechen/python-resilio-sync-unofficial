@@ -2,16 +2,17 @@ from __future__ import annotations
 
 import json
 import logging
-from urllib.parse import urljoin
-import urllib3
-import time
 import re
+import time
+from urllib.parse import urljoin
+
+import urllib3
 
 
 class RslClient:
     def __init__(self, url, username, password, timeout=30):
         self.url = urljoin(url, "gui/")
-        self.auth_headers = urllib3.make_headers(basic_auth=f"{username}:{password}")
+        self.auth_headers = urllib3.make_headers(basic_auth=username + ":" + password)
         self.timeout = timeout
         self.auth_cookie = None
         self.token = None

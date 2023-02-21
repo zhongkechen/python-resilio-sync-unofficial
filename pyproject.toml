@@ -1,12 +1,20 @@
 [tool.poetry]
 name = "rslsync"
-version = "0.1.0"
+version = "0.1.1"
 description = "A Python client of unofficial Resilio Sync API"
 authors = ["Zhongke Chen <github@ch3n2k.com>"]
+maintainers = []
 license = "MIT"
+readme = "README.md"
+homepage = "https://github.com/zhongkechen/python-resilio-sync-unofficial"
+repository = "https://github.com/zhongkechen/python-resilio-sync-unofficial"
+documentation = "https://github.com/zhongkechen/python-resilio-sync-unofficial"
+keywords = ["resilio", "btsync", "sync", "unofficial"]
+classifiers = ["Development Status :: 3 - Alpha", "License :: OSI Approved :: MIT License", "Topic :: Communications :: File Sharing"]
 
 [tool.poetry.dependencies]
 python = "^3.7"
+urllib3 = ">=1.0"
 
 [tool.poetry.dev-dependencies]
 
