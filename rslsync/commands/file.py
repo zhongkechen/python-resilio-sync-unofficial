@@ -18,7 +18,22 @@ class FileCommands:
         return self.client.make_request("createjoblink", id=share_id)["value"]["link"]
 
     def unshare_file(self, share_id):
-        self.client.make_request("removejob", id=share_id)
+        return self.client.make_request("removejob", id=share_id)
 
     def list_shared_files(self):
         return self.client.make_request("getsyncjobs")["value"]["jobs"]
+
+    def get_job_preferences(self, job_id):
+        return self.client.make_request("jobpref", id=job_id)["value"]
+
+    def set_job_preferences(self, job_id, preferences):
+        return self.client.make_request("setjobpref", id=job_id, **preferences)
+
+    def get_known_hosts(self, job_id):
+        return self.client.make_request("knownhosts", id=job_id, isfolder=False)["value"]
+
+    def set_known_hosts(self, job_id, known_hosts: list):
+        return self.client.make_request("setknownhosts", id=job_id, isfolder=False, hosts=",".join(known_hosts))
+
+    def get_file_job_path(self):
+        return self.client.make_request("filejobpath")
