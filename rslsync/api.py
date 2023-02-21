@@ -1,6 +1,9 @@
+from __future__ import annotations
+
+import json
 import logging
 from urllib.parse import urljoin
-import requests
+import urllib3
 import time
 import re
 
@@ -8,51 +11,56 @@ import re
 class RslClient:
     def __init__(self, url, username, password, timeout=30):
         self.url = urljoin(url, "gui/")
-        self.session = requests.Session()
-        self.session.auth = (username, password)
+        self.auth_headers = urllib3.make_headers(basic_auth=f"{username}:{password}")
         self.timeout = timeout
-        self.token = self.get_token()
+        self.auth_cookie = None
+        self.token = None
+        self.authenticate()
 
     @staticmethod
-    def current_ts():
+    def _current_ts():
         return int(time.time() * 1000)
 
-    def get_token(self):
-        url = urljoin(self.url, "token.html")
-        response = self.session.get(url, params={"t": self.current_ts()}, timeout=self.timeout)
-        pattern = r"<div id='token' .*>(?P<token>[\w-]+)</div>"
-        m = re.search(pattern, response.content.decode("utf-8"))
-        if m:
-            return m.group('token')
-        raise "Invalid credentials"
+    @staticmethod
+    def _convert_parameter(value):
+        return str(value).lower() if isinstance(value, bool) else value
 
-    def get_command(self, command, **params):
-        logging.debug("get: ", command, params)
-        response = self.session.get(
-            self.url,
-            params={"token": self.token, 'action': command, **params, "t": self.current_ts()},
-            timeout=self.timeout,
-        )
-        j = response.json()
-        assert j["status"] == 200
+    def authenticate(self):
+        url = urljoin(self.url, "token.html")
+        fields = {"t": self._current_ts()}
+        response = urllib3.PoolManager().request("GET", url, headers=self.auth_headers, fields=fields, timeout=self.timeout)
+        self.auth_cookie = response.headers["Set-Cookie"].split(";")[0]
+        pattern = r"<div id='token' .*>(?P<token>[\w-]+)</div>"
+        m = re.search(pattern, response.data.decode("utf-8"))
+        if m:
+            self.token = m.group('token')
+        else:
+            raise "Invalid credentials"
+
+    def make_request(self, action, verify=True, **params):
+        logging.debug("get: ", action, params)
+        headers = {"Cookie": self.auth_cookie, **self.auth_headers}
+        params = {key: self._convert_parameter(value) for key, value in params.items()}
+        fields = {"token": self.token, 'action': action, **params, "t": self._current_ts()}
+        response = urllib3.PoolManager().request("GET", self.url, headers=headers, fields=fields, timeout=self.timeout)
+        j = json.loads(response.data.decode('utf-8'))
+        if verify and j.get("status") != 200:
+            logging.error(j)
         return j
 
-    def get_shared_folders(self):
-        return self.get_command("getsyncfolders", discovery=1)["folders"]
+    @property
+    def general(self):
+        from rslsync.commands.general import GeneralCommands
+        return GeneralCommands(self)
 
-    def share_file(self, file_path, expire_days):
-        job_id = self.get_command("addmasterjob")["value"]["id"]
-        self.get_command("addpathtojob", path=file_path, id=job_id)
-        self.get_command("commitmasterjob", id=job_id)
-        self.get_command("setjobttl", id=job_id, ttl=expire_days * 3600 * 24)
-        return job_id
+    @property
+    def folder(self):
+        from rslsync.commands.folder import FolderCommands
+        return FolderCommands(self)
 
-    def create_link_for_shared_file(self, share_id):
-        return self.get_command("createjoblink", id=share_id)["value"]["link"]
+    @property
+    def file(self):
+        from rslsync.commands.file import FileCommands
+        return FileCommands(self)
 
-    def unshare_file(self, share_id):
-        self.get_command("removejob", id=share_id)
-
-    def get_shared_files(self):
-        return self.get_command("getsyncjobs")["value"]["jobs"]
 
