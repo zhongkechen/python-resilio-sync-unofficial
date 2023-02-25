@@ -1,9 +1,6 @@
 import argparse
 import inspect
 import json
-import importlib
-import pkgutil
-import os.path
 
 from rslsync import RslClient
 
@@ -14,8 +11,9 @@ def add_commands(parser, clazz):
         if name.startswith("__"):
             continue
         name = name.replace("_", "-")
-        command_group = subparsers.add_parser(name)
-        parameters = inspect.signature(method).parameters
+        command_group = subparsers.add_parser(name, description=method.__doc__)
+        signature = inspect.signature(method)
+        parameters = signature.parameters
         for param_name, param_value in parameters.items():
             if param_name == "self":
                 continue
@@ -52,7 +50,7 @@ def pass_args():
     subparsers = parser.add_subparsers(dest="command", required=True)
 
     for command, clazz in RslClient.list_commands():
-        add_commands(subparsers.add_parser(command), clazz)
+        add_commands(subparsers.add_parser(command, description=clazz.__doc__), clazz)
 
     return parser.parse_args()
 

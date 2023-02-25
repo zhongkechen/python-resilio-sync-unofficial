@@ -1,7 +1,7 @@
 [tool.poetry]
 name = "rslsync"
-version = "0.3.0"
-description = "A Python client of unofficial Resilio Sync API"
+version = "0.4.0"
+description = "A Python client library and CLI of unofficial Resilio Sync API"
 authors = ["Zhongke Chen <github@ch3n2k.com>"]
 maintainers = []
 license = "MIT"
