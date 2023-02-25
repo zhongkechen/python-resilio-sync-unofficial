@@ -1,16 +1,15 @@
 import argparse
 import inspect
 import json
-import sys
+import importlib
+import pkgutil
+import os.path
 
 from rslsync import RslClient
-from rslsync.commands.folder import FolderCommands
-from rslsync.commands.file import FileCommands
-from rslsync.commands.general import GeneralCommands
 
 
 def add_commands(parser, clazz):
-    subparsers = parser.add_subparsers(dest="subcommand")
+    subparsers = parser.add_subparsers(dest="subcommand", required=True)
     for name, method in inspect.getmembers(clazz, predicate=inspect.isfunction):
         if name.startswith("__"):
             continue
@@ -39,48 +38,46 @@ def add_commands(parser, clazz):
                 command_group.add_argument(param_name, required=True)
 
 
-GENERAL_ARGS = ["url", "host", "port", "username", "password", "config", "script", "command", "subcommand"]
+GENERAL_ARGS = ["url", "host", "port", "username", "password", "config", "command", "subcommand"]
 
 
 def pass_args():
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(prog="rsl")
     parser.add_argument("--url")
     parser.add_argument("--host")
     parser.add_argument("--port")
     parser.add_argument("-u", "--username")
     parser.add_argument("-p", "--password")
     parser.add_argument("-c", "--config")
-    parser.add_argument("script")
-    subparsers = parser.add_subparsers(dest="command")
-    folder = subparsers.add_parser("folder")
-    add_commands(folder, FolderCommands)
-    general = subparsers.add_parser("general")
-    add_commands(general, GeneralCommands)
-    file = subparsers.add_parser("file")
-    add_commands(file, FileCommands)
-    return parser.parse_args(sys.argv)
+    subparsers = parser.add_subparsers(dest="command", required=True)
+
+    for command, clazz in RslClient.list_commands():
+        add_commands(subparsers.add_parser(command), clazz)
+
+    return parser.parse_args()
 
 
 def build_url(host, port):
-    return "http://" + host + ":" + port
+    return "http://" + (host or "localhost") + ":" + (port or "8888")
 
 
 def main():
     args = pass_args()
     if args.config:
         config = json.load(open(args.config))
-        url = config.get("url") or build_url(config["host"], config["port"])
+        url = config.get("url") or build_url(config.get("host"), config.get("port"))
         username = config["username"]
         password = config["password"]
     else:
         url = args.url or build_url(args.host, args.port)
         username = args.username
         password = args.password
+
     client = RslClient(url, username, password)
     command = getattr(client, args.command.replace("-", "_"))
     subcommand = getattr(command, args.subcommand.replace("-", "_"))
     params = vars(args)
-    return subcommand(**{k:v for k,v in params.items() if k not in GENERAL_ARGS})
+    return subcommand(**{k: v for k, v in params.items() if k not in GENERAL_ARGS})
 
 
 if __name__ == "__main__":

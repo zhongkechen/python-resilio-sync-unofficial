@@ -1,7 +1,10 @@
 from __future__ import annotations
 
+import importlib
 import json
 import logging
+import os.path
+import pkgutil
 import re
 import time
 from urllib.parse import urljoin
@@ -54,21 +57,25 @@ class RslClient:
         j = json.loads(response.read().decode('utf-8'))
         if verify and j.get("status") != 200:
             logging.error(j)
+
+        if "status" in j:
+            del j["status"]
+
+        if len(j.keys()) == 1:
+            for i in j.values():
+                return i
+
         return j
 
-    @property
-    def general(self):
-        from rslsync.commands.general import GeneralCommands
-        return GeneralCommands(self)
+    @staticmethod
+    def list_commands():
+        import rslsync.commands
+        for _, command, _ in pkgutil.iter_modules([os.path.dirname(rslsync.commands.__file__)]):
+            mod = importlib.import_module("rslsync.commands." + command)
+            clazz = getattr(mod, command.capitalize() + "Commands")
+            yield command, clazz
 
-    @property
-    def folder(self):
-        from rslsync.commands.folder import FolderCommands
-        return FolderCommands(self)
-
-    @property
-    def file(self):
-        from rslsync.commands.file import FileCommands
-        return FileCommands(self)
-
-
+    def __getattr__(self, item):
+        for command, clazz in self.list_commands():
+            if command == item:
+                return clazz(self)
