@@ -133,3 +133,6 @@ dmypy.json
 
 # poetry
 poetry.lock
+
+# local config file
+config.json
