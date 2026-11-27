@@ -30,8 +30,8 @@ def add_commands(parser, clazz):
             elif isinstance(param_value.default, str):
                 default = param_value.default
                 command_group.add_argument(param_name, default=default)
-            elif param_value.annotation == 'list':
-                command_group.add_argument(param_name, action="extend")
+            elif param_value.annotation in (list, "list"):
+                command_group.add_argument(param_name, action="append", required=True)
             else:
                 command_group.add_argument(param_name, required=True)
 
