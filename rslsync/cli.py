@@ -75,7 +75,11 @@ def main():
     command = getattr(client, args.command.replace("-", "_"))
     subcommand = getattr(command, args.subcommand.replace("-", "_"))
     params = vars(args)
-    return subcommand(**{k: v for k, v in params.items() if k not in GENERAL_ARGS})
+    result = subcommand(**{k: v for k, v in params.items() if k not in GENERAL_ARGS})
+    if isinstance(result, str):
+        print(result)
+    elif result is not None:
+        print(json.dumps(result, ensure_ascii=False))
 
 
 if __name__ == "__main__":
