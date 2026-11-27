@@ -25,6 +25,8 @@ class GeneralCommands:
 
     def set_advanced_settings(self, settings):
         """Set advanced settings"""
+        if isinstance(settings, str):
+            settings = json.loads(settings)
         return self.client.make_request("setadvancedsettings", **settings)
 
     def get_settings(self):
@@ -33,6 +35,8 @@ class GeneralCommands:
 
     def set_settings(self, settings):
         """Set settings"""
+        if isinstance(settings, str):
+            settings = json.loads(settings)
         return self.client.make_request("setsettings", **settings)
 
     def apply_license_link(self, link):

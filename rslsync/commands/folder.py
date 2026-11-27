@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import json
+
 from rslsync import RslClient
 
 
@@ -19,6 +21,8 @@ class FolderCommands:
 
     def set_preferences(self, name, secret, preferences):
         """Set preferences for a shared folder"""
+        if isinstance(preferences, str):
+            preferences = json.loads(preferences)
         return self.client.make_request("setfolderpref", name=name, secret=secret, **preferences)
 
     def get_preferences(self, folder_id):
