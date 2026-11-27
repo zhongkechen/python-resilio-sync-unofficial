@@ -20,10 +20,16 @@ def add_commands(parser, clazz):
 
             param_name = "--" + param_name.replace("_", "-")
 
-            if param_value.default in [True, False]:
-                action = "store_true"
+            if isinstance(param_value.default, bool):
                 default = param_value.default
-                command_group.add_argument(param_name, action=action, default=default)
+                flags = command_group.add_mutually_exclusive_group()
+                flags.add_argument(param_name, action="store_true", default=default)
+                flags.add_argument(
+                    "--no-" + param_name[2:],
+                    dest=param_value.name,
+                    action="store_false",
+                    default=default,
+                )
             elif isinstance(param_value.default, int):
                 default = param_value.default
                 command_group.add_argument(param_name, default=default, type=int)
