@@ -56,7 +56,7 @@ def pass_args():
 
 
 def build_url(host, port):
-    return "http://" + (host or "localhost") + ":" + (port or "8888")
+    return f"http://{host or 'localhost'}:{port or 8888}"
 
 
 def main():
