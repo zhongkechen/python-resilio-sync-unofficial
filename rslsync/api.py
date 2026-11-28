@@ -39,13 +39,21 @@ class RslClient:
         fields = urllib.parse.urlencode({"t": self._current_ts()})
         request = urllib.request.Request(url + "?" + fields, headers=self.auth_headers)
         response = urllib.request.urlopen(request, timeout=self.timeout)
-        self.auth_cookie = response.getheader("Set-Cookie").split(";")[0]
+        with response:
+            cookie_header = response.getheader("Set-Cookie")
+            page = response.read()
+
+        auth_cookie = (cookie_header or "").partition(";")[0].strip()
+        if not auth_cookie:
+            raise RuntimeError("Resilio Sync token response is missing a session cookie")
+
         pattern = r"<div id='token' .*>(?P<token>[\w-]+)</div>"
-        m = re.search(pattern, response.read().decode("utf-8"))
-        if m:
-            self.token = m.group('token')
-        else:
-            raise "Invalid credentials"
+        match = re.search(pattern, page.decode("utf-8"))
+        if match is None:
+            raise RuntimeError("Resilio Sync token response is missing an authentication token")
+
+        self.auth_cookie = auth_cookie
+        self.token = match.group("token")
 
     def make_request(self, action, verify=True, **params):
         logging.debug("get: ", action, params)
