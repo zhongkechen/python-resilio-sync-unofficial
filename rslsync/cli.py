@@ -39,7 +39,9 @@ def add_commands(parser, clazz):
             elif param_value.annotation in (list, "list"):
                 command_group.add_argument(param_name, action="append", required=True)
             else:
-                command_group.add_argument(param_name, required=True)
+                default = param_value.default
+                required = default is inspect.Parameter.empty
+                command_group.add_argument(param_name, required=required, default=None if required else default)
 
 
 GENERAL_ARGS = ["url", "host", "port", "username", "password", "config", "command", "subcommand"]
