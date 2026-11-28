@@ -13,10 +13,14 @@ class FileCommands:
 
     def add(self, file_path, expire_days):
         """Create a share job"""
+        if isinstance(expire_days, str):
+            expire_days = int(expire_days)
+        ttl = expire_days * 24 * 3600
+
         job_id = self.client.make_request("addmasterjob")["id"]
         self.client.make_request("addpathtojob", path=file_path, id=job_id)
         self.client.make_request("commitmasterjob", id=job_id)
-        self.client.make_request("setjobttl", id=job_id, ttl=expire_days * 3600 * 24)
+        self.client.make_request("setjobttl", id=job_id, ttl=ttl)
         return job_id
 
     def get_link(self, job_id):
