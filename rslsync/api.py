@@ -13,6 +13,15 @@ from base64 import b64encode
 import urllib.request
 
 
+class RslRequestError(RuntimeError):
+    """A Resilio Sync action returned a failure status."""
+
+    def __init__(self, action, status):
+        super().__init__(f"Resilio Sync action {action!r} failed with status {status}")
+        self.action = action
+        self.status = status
+
+
 class RslClient:
     def __init__(self, url, username, password, timeout=30):
         self.url = urljoin(url, "gui/")
@@ -41,13 +50,21 @@ class RslClient:
         fields = urllib.parse.urlencode({"t": self._current_ts()})
         request = urllib.request.Request(url + "?" + fields, headers=self.auth_headers)
         response = self._opener.open(request, timeout=self.timeout)
-        self.auth_cookie = response.getheader("Set-Cookie").split(";")[0]
+        with response:
+            cookie_header = response.getheader("Set-Cookie")
+            page = response.read()
+
+        auth_cookie = (cookie_header or "").partition(";")[0].strip()
+        if not auth_cookie:
+            raise RuntimeError("Resilio Sync token response is missing a session cookie")
+
         pattern = r"<div id='token' .*>(?P<token>[\w-]+)</div>"
-        m = re.search(pattern, response.read().decode("utf-8"))
-        if m:
-            self.token = m.group('token')
-        else:
-            raise "Invalid credentials"
+        match = re.search(pattern, page.decode("utf-8"))
+        if match is None:
+            raise RuntimeError("Resilio Sync token response is missing an authentication token")
+
+        self.auth_cookie = auth_cookie
+        self.token = match.group("token")
 
     def make_request(self, action, verify=True, **params):
         logging.debug("get: ", action, params)
@@ -57,11 +74,10 @@ class RslClient:
         request = urllib.request.Request(self.url + "?" + fields, headers=headers)
         response = self._opener.open(request, timeout=self.timeout)
         j = json.loads(response.read().decode('utf-8'))
-        if verify and j.get("status") != 200:
-            logging.error(j)
-
         if "status" in j:
-            del j["status"]
+            status = j.pop("status")
+            if verify and status != 200:
+                raise RslRequestError(action, status)
 
         if len(j.keys()) == 1:
             for i in j.values():

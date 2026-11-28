@@ -36,9 +36,9 @@ $ c.folder.list()  # list all shared folders
 
 # file commands
 $ c.file.list()  # list all shared files
-$ share_id = c.file.share(path, days)   # share a single file
+$ share_id = c.file.add(path, days)   # share a single file
 $ c.file.get_link(share_id)   # create a share link
-$ c.file.unshare(share_id)   # unshare a file
+$ c.file.remove(share_id)   # unshare a file
 
 # stat commands
 $ c.stat.get_peers_stat()  # get the stats of peers

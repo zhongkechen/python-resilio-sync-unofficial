@@ -20,20 +20,28 @@ def add_commands(parser, clazz):
 
             param_name = "--" + param_name.replace("_", "-")
 
-            if param_value.default in [True, False]:
-                action = "store_true"
+            if isinstance(param_value.default, bool):
                 default = param_value.default
-                command_group.add_argument(param_name, action=action, default=default)
+                flags = command_group.add_mutually_exclusive_group()
+                flags.add_argument(param_name, action="store_true", default=default)
+                flags.add_argument(
+                    "--no-" + param_name[2:],
+                    dest=param_value.name,
+                    action="store_false",
+                    default=default,
+                )
             elif isinstance(param_value.default, int):
                 default = param_value.default
                 command_group.add_argument(param_name, default=default, type=int)
             elif isinstance(param_value.default, str):
                 default = param_value.default
                 command_group.add_argument(param_name, default=default)
-            elif param_value.annotation == 'list':
-                command_group.add_argument(param_name, action="extend")
+            elif param_value.annotation in (list, "list"):
+                command_group.add_argument(param_name, action="append", required=True)
             else:
-                command_group.add_argument(param_name, required=True)
+                default = param_value.default
+                required = default is inspect.Parameter.empty
+                command_group.add_argument(param_name, required=required, default=None if required else default)
 
 
 GENERAL_ARGS = ["url", "host", "port", "username", "password", "config", "command", "subcommand"]
@@ -56,7 +64,7 @@ def pass_args():
 
 
 def build_url(host, port):
-    return "http://" + (host or "localhost") + ":" + (port or "8888")
+    return f"http://{host or 'localhost'}:{port or 8888}"
 
 
 def main():
@@ -75,7 +83,11 @@ def main():
     command = getattr(client, args.command.replace("-", "_"))
     subcommand = getattr(command, args.subcommand.replace("-", "_"))
     params = vars(args)
-    return subcommand(**{k: v for k, v in params.items() if k not in GENERAL_ARGS})
+    result = subcommand(**{k: v for k, v in params.items() if k not in GENERAL_ARGS})
+    if isinstance(result, str):
+        print(result)
+    elif result is not None:
+        print(json.dumps(result, ensure_ascii=False))
 
 
 if __name__ == "__main__":
