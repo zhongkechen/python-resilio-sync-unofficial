@@ -12,6 +12,15 @@ from base64 import b64encode
 import urllib.request
 
 
+class RslRequestError(RuntimeError):
+    """A Resilio Sync action returned a failure status."""
+
+    def __init__(self, action, status):
+        super().__init__(f"Resilio Sync action {action!r} failed with status {status}")
+        self.action = action
+        self.status = status
+
+
 class RslClient:
     def __init__(self, url, username, password, timeout=30):
         self.url = urljoin(url, "gui/")
@@ -63,11 +72,10 @@ class RslClient:
         request = urllib.request.Request(self.url + "?" + fields, headers=headers)
         response = urllib.request.urlopen(request, timeout=self.timeout)
         j = json.loads(response.read().decode('utf-8'))
-        if verify and j.get("status") != 200:
-            logging.error(j)
-
         if "status" in j:
-            del j["status"]
+            status = j.pop("status")
+            if verify and status != 200:
+                raise RslRequestError(action, status)
 
         if len(j.keys()) == 1:
             for i in j.values():
